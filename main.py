@@ -18,7 +18,7 @@ intents.members = True
 bot = commands.Bot(command_prefix='.',intents=intents)
 
 load_dotenv()
-TOKEN = "token here"
+TOKEN = "tokenhere"
 
 #logging
 def log(message):
